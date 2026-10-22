@@ -4,3 +4,4 @@ Brideline is a mobile application that brings wedding services together in one p
 ## Design and Documentation
 - [Figma Prototype](https://www.figma.com/design/Ve6ELHLeRMiYqHksGKYPB2/Untitled?node-id=0-1&t=oACx8MpWdckV17b0-1)
 - [Project Documentation](docs/)
+- [Milestone 2 Project Board](https://github.com/users/FatimahAlbannai/projects/2/views/1)
