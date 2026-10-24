@@ -4,7 +4,7 @@ Bride Line uses a layered architecture consisting of UI, Domain, and Data layers
 
 ## Architecture Diagram
 
-![Bride Line System Architecture](docs/Bride_Line_System_Architecture.jpeg)
+![Bride Line System Architecture](Bride_Line_System_Architecture.jpeg)
 
 ## 1. UI Layer
 
