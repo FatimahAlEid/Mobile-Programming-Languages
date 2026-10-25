@@ -2,8 +2,6 @@
 
 CSC 402 Mobile Application Programming — Milestone 2
 
-This file mirrors Part C of the Milestone 2 submission document and is kept in sync with it.
-
 | Stage / Week | Tool | Where used | Purpose, and what we did with the output |
 |---|---|---|---|
 | Stage 1, Week 7 | ChatGPT | A4 - Navigation Map | We used AI to simplify and speed up the task instead of drawing the structure from scratch. We provided ChatGPT with all our screens and asked it to create a navigation map in draw.io. Some routes were incorrect or missing, so we corrected them and added the missing routes. We also changed the colors to match our application's color palette. |
