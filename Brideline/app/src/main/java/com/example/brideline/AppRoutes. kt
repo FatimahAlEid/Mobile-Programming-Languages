@@ -1,0 +1,11 @@
+package com.example.brideline
+
+object AppRoutes {
+    const val BOOKED = "bookedAppointments"
+
+    const val DETAILS = "appointmentDetails/{appointmentId}"
+
+    const val REVIEW = "leaveReview/{appointmentId}/{providerName}"
+
+    const val CHAT = "chat/{appointmentId}"
+}

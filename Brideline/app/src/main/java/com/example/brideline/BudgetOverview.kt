@@ -1,7 +1,9 @@
 package com.example.brideline
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +13,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -92,6 +98,64 @@ private fun percentage(ratio: Double): String {
     val formatter = NumberFormat.getPercentInstance(Locale.US)
     formatter.maximumFractionDigits = 1
     return formatter.format(ratio)
+}
+
+@Composable
+fun BudgetOverviewRoute(
+    weddingId: String,
+    totalBudget: Double,
+    spentAmount: Double,
+    categories: List<BudgetCategoryUi>,
+    roleLabel: String,
+    onBack: () -> Unit,
+    onAllocate: () -> Unit,
+    onEdit: () -> Unit,
+    onHome: () -> Unit,
+    onProfile: () -> Unit,
+    onAddPayment: (String) -> Unit,
+    onViewInvoice: (String, String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedCategoryId by rememberSaveable(weddingId) {
+        mutableStateOf<String?>(null)
+    }
+
+    val categoryId = selectedCategoryId
+    val returnToOverview = { selectedCategoryId = null }
+
+    BackHandler(
+        enabled = categoryId != null,
+        onBack = returnToOverview
+    )
+
+    if (categoryId == null) {
+        BudgetOverviewScreen(
+            totalBudget = totalBudget,
+            spentAmount = spentAmount,
+            categories = categories,
+            roleLabel = roleLabel,
+            onBack = onBack,
+            onAllocate = onAllocate,
+            onEdit = onEdit,
+            onCategoryClick = { selectedCategoryId = it },
+            onHome = onHome,
+            onProfile = onProfile,
+            modifier = modifier
+        )
+    } else {
+        BudgetCategoryDetailsScreen(
+            weddingId = weddingId,
+            categoryId = categoryId,
+            roleLabel = roleLabel,
+            onBack = returnToOverview,
+            onHome = onHome,
+            onBudget = returnToOverview,
+            onProfile = onProfile,
+            onAddPayment = onAddPayment,
+            onViewInvoice = onViewInvoice,
+            modifier = modifier
+        )
+    }
 }
 
 @Composable
@@ -257,6 +321,7 @@ private fun BudgetHeader(
                         BudgetText("Total Budget", 16, color = BudgetMuted)
                         BudgetText(sar(total), 30)
                         BudgetAmountLine("Spent", spent, BudgetRose)
+
                         BudgetAmountLine(
                             label = "Remaining",
                             amount = remaining,
@@ -270,6 +335,7 @@ private fun BudgetHeader(
                     ) {
                         Canvas(Modifier.fillMaxSize()) {
                             val strokeWidth = 9.dp.toPx()
+
                             drawCircle(
                                 color = BudgetRose,
                                 radius = (size.minDimension - strokeWidth) / 2f,
@@ -471,45 +537,16 @@ private fun BudgetBottomBar(
     onHome: () -> Unit,
     onProfile: () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().background(BudgetPage)) {
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            thickness = 1.dp,
-            color = BudgetBlush
-        )
-
-        NavigationBar(
-            containerColor = BudgetPage,
-            tonalElevation = 0.dp
-        ) {
-            listOf("Home", "Budget", "Profile").forEach { tab ->
-                val selected = tab == "Budget"
-                val color = if (selected) BudgetRose else BudgetInk
-
-                NavigationBarItem(
-                    selected = selected,
-                    onClick = {
-                        when (tab) {
-                            "Home" -> onHome()
-                            "Profile" -> onProfile()
-                            else -> Unit
-                        }
-                    },
-                    icon = {
-                        BudgetIcon(
-                            name = if (selected) "wallet" else tab,
-                            iconSize = 26.dp,
-                            tint = color
-                        )
-                    },
-                    label = { BudgetText(tab, 12, color = color) },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = BudgetBlush.copy(alpha = 0.55f)
-                    )
-                )
+    BridelineBottomBar(
+        selectedTab = BridelineTab.Budget,
+        onTabSelected = { tab ->
+            when (tab) {
+                BridelineTab.Home -> onHome()
+                BridelineTab.Budget -> Unit
+                BridelineTab.Profile -> onProfile()
             }
         }
-    }
+    )
 }
 
 private val budgetPaths = mapOf(
@@ -528,7 +565,7 @@ private val budgetPaths = mapOf(
 )
 
 @Composable
-private fun BudgetIcon(
+internal fun BudgetIcon(
     name: String,
     iconSize: Dp,
     tint: Color = BudgetInk,
@@ -566,18 +603,60 @@ private fun BudgetIcon(
 
 @Composable
 private fun BudgetExample(categories: List<BudgetCategoryUi>) {
-    BudgetOverviewScreen(
-        totalBudget = 17000.0,
-        spentAmount = 7580.0,
-        categories = categories,
-        roleLabel = "Bride Line.Groom",
-        onBack = {},
-        onAllocate = {},
-        onEdit = {},
-        onCategoryClick = {},
-        onHome = {},
-        onProfile = {}
-    )
+    var editing by remember { mutableStateOf(false) }
+    var savedTotal by remember { mutableStateOf(17000.0) }
+    var savedCategories by remember(categories) { mutableStateOf(categories) }
+    var selectedCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val categoryId = selectedCategoryId
+    val frameShape = RoundedCornerShape(56.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(10.dp)
+            .border(
+                width = 2.dp,
+                color = Color(0xFFC95772).copy(alpha = 0.7f),
+                shape = frameShape
+            )
+            .clip(frameShape)
+    ) {
+        if (categoryId != null) {
+            SampleBudgetCategoryDetails(
+                categoryId = categoryId,
+                onBack = { selectedCategoryId = null }
+            )
+        } else if (editing) {
+            EditBudgetScreen(
+                initialTotalBudget = savedTotal,
+                initialCategories = savedCategories,
+                roleLabel = "Bride Line.Groom",
+                onBack = { editing = false },
+                onSave = { total, allocations ->
+                    savedTotal = total
+                    savedCategories = allocations
+                    editing = false
+                },
+                onHome = {},
+                onProfile = {}
+            )
+        } else {
+            BudgetOverviewScreen(
+                totalBudget = savedTotal,
+                spentAmount = 7580.0,
+                categories = savedCategories,
+                roleLabel = "Bride Line.Groom",
+                onBack = {},
+                onAllocate = { editing = true },
+                onEdit = { editing = true },
+                onCategoryClick = { selectedCategoryId = it },
+                onHome = {},
+                onProfile = {}
+            )
+        }
+    }
 }
 
 @Preview(

@@ -56,3 +56,27 @@ fun BridelineTheme(
         content = content
     )
 }
+private val LightColorScheme = lightColorScheme(
+    primary = PrimaryPink,
+    secondary = AccentPink,
+    tertiary = AccentPink,
+    background = BackgroundSoft,
+    surface = CardWhite,
+    onPrimary = Color.White,
+    onSecondary = TextPrimary,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary,
+    primaryContainer = AccentPink,
+    onPrimaryContainer = TextPrimary
+)
+
+@Composable
+fun PrideTheme(
+    content: @Composable () -> Unit
+) {
+    MaterialTheme(
+        colorScheme = LightColorScheme,
+        typography = Typography,
+        content = content
+    )
+}
