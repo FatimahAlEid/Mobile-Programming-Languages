@@ -1,4 +1,4 @@
-package com.example.brideline
+package com.example.pride.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -37,10 +37,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,16 +59,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pride.ui.components.BridelineBottomNavBar
 import com.example.pride.ui.components.NavTab
-import com.example.pride.ui.theme.AccentPink
-import com.example.pride.ui.theme.BackgroundSoft
-import com.example.pride.ui.theme.CardWhite
-import com.example.pride.ui.theme.PrideTheme
-import com.example.pride.ui.theme.PrimaryPink
-import com.example.pride.ui.theme.SuccessBg
-import com.example.pride.ui.theme.SuccessText
-import com.example.pride.ui.theme.TextMuted
-import com.example.pride.ui.theme.TextPrimary
-import com.example.pride.ui.theme.TextSecondary
+
+// Self-contained Style Guide Colors
+private val PrimaryPink = Color(0xFFD2647D)
+private val AccentPink = Color(0xFFEDBEC8)
+private val BackgroundSoft = Color(0xFFFAF6F7)
+private val CardWhite = Color(0xFFFFFFFF)
+private val SuccessBg = Color(0xFFEAF3EC)
+private val SuccessText = Color(0xFF2E7D32)
+private val TextPrimary = Color(0xFF1F1F1F)
+private val TextSecondary = Color(0xFF555555)
+private val TextMuted = Color(0xFF757575)
+
+@Composable
+fun ProfileTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = PrimaryPink,
+            secondary = AccentPink,
+            background = BackgroundSoft,
+            surface = CardWhite,
+            onPrimary = Color.White,
+            onBackground = TextPrimary,
+            onSurface = TextPrimary
+        ),
+        content = content
+    )
+}
 
 @Composable
 fun ProfileScreen(
@@ -79,300 +98,302 @@ fun ProfileScreen(
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
 
-    Scaffold(
-        containerColor = BackgroundSoft,
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = TextPrimary
-                    )
-                }
-
-                Text(
-                    text = "Profile",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(AccentPink.copy(alpha = 0.5f))
-                        .border(BorderStroke(1.dp, PrimaryPink.copy(alpha = 0.5f)), RoundedCornerShape(10.dp))
-                        .clickable { onNavigateToEditProfile() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = "Edit Profile",
-                        tint = PrimaryPink,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        },
-        bottomBar = {
-            BridelineBottomNavBar(
-                selectedTab = NavTab.PROFILE,
-                onNavigateToHome = onNavigateToHome,
-                onNavigateToServices = onNavigateToServices,
-                onNavigateToProfile = {}
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // User Summary Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = AccentPink)
-            ) {
+    ProfileTheme {
+        Scaffold(
+            containerColor = BackgroundSoft,
+            topBar = {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TextPrimary
+                        )
+                    }
+
+                    Text(
+                        text = "Profile",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(CardWhite.copy(alpha = 0.6f)),
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(AccentPink.copy(alpha = 0.5f))
+                            .border(BorderStroke(1.dp, PrimaryPink.copy(alpha = 0.5f)), RoundedCornerShape(10.dp))
+                            .clickable { onNavigateToEditProfile() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = "User Avatar",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(44.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column {
-                        Text(
-                            text = "Areej Mohammed",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Text(
-                            text = "Service Provider",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextSecondary
-                        )
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Text(
-                            text = "Member since October 2026",
-                            fontSize = 12.sp,
-                            color = TextMuted
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        // Account Active Green Badge
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(SuccessBg)
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "Account active",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SuccessText
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Personal Information Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "Personal Information",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardWhite)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 6.dp)
-                    ) {
-                        InfoRow(
-                            icon = Icons.Outlined.Person,
-                            label = "Full Name",
-                            value = "Areej Mohammed"
-                        )
-                        HorizontalDivider(
-                            color = BackgroundSoft,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                        InfoRow(
-                            icon = Icons.Outlined.Mail,
-                            label = "Email",
-                            value = "Areejm@example.com"
-                        )
-                        HorizontalDivider(
-                            color = BackgroundSoft,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                        InfoRow(
-                            icon = Icons.Outlined.Call,
-                            label = "Phone",
-                            value = "+966 50 123 4567"
-                        )
-                        HorizontalDivider(
-                            color = BackgroundSoft,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                        InfoRow(
-                            icon = Icons.Outlined.PinDrop,
-                            label = "Location",
-                            value = "Qatif, Saudi Arabia"
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Edit Profile",
+                            tint = PrimaryPink,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
-            }
-
-            // Account Settings Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "Account Settings",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+            },
+            bottomBar = {
+                BridelineBottomNavBar(
+                    selectedTab = NavTab.PROFILE,
+                    onNavigateToHome = onNavigateToHome,
+                    onNavigateToServices = onNavigateToServices,
+                    onNavigateToProfile = {}
                 )
-
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // User Summary Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = AccentPink)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 6.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        SettingRow(
-                            icon = Icons.Outlined.Lock,
-                            title = "Change Password",
-                            onClick = onNavigateToChangePassword
-                        )
-                        HorizontalDivider(
-                            color = CardWhite.copy(alpha = 0.5f),
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                        SettingRow(
-                            icon = Icons.Outlined.Description,
-                            title = "Privacy & Security",
-                            onClick = {}
-                        )
-                        HorizontalDivider(
-                            color = CardWhite.copy(alpha = 0.5f),
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
-                        // Notifications row with working Switch
-                        Row(
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .background(CardWhite.copy(alpha = 0.6f)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = "User Avatar",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(44.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column {
+                            Text(
+                                text = "Areej Mohammed",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            Text(
+                                text = "Service Provider",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextSecondary
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            Text(
+                                text = "Member since October 2026",
+                                fontSize = 12.sp,
+                                color = TextMuted
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Account Active Green Badge
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(SuccessBg)
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(CircleShape)
-                                        .background(AccentPink.copy(alpha = 0.6f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Notifications,
-                                        contentDescription = null,
-                                        tint = TextPrimary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "Notifications",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
+                                    text = "Account active",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SuccessText
                                 )
                             }
+                        }
+                    }
+                }
 
-                            Switch(
-                                checked = notificationsEnabled,
-                                onCheckedChange = { notificationsEnabled = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = PrimaryPink,
-                                    uncheckedThumbColor = Color.White,
-                                    uncheckedTrackColor = Color.Gray.copy(alpha = 0.4f)
-                                )
+                // Personal Information Section
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Personal Information",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardWhite)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        ) {
+                            InfoRow(
+                                icon = Icons.Outlined.Person,
+                                label = "Full Name",
+                                value = "Areej Mohammed"
+                            )
+                            HorizontalDivider(
+                                color = BackgroundSoft,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                            InfoRow(
+                                icon = Icons.Outlined.Mail,
+                                label = "Email",
+                                value = "Areejm@example.com"
+                            )
+                            HorizontalDivider(
+                                color = BackgroundSoft,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                            InfoRow(
+                                icon = Icons.Outlined.Call,
+                                label = "Phone",
+                                value = "+966 50 123 4567"
+                            )
+                            HorizontalDivider(
+                                color = BackgroundSoft,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                            InfoRow(
+                                icon = Icons.Outlined.PinDrop,
+                                label = "Location",
+                                value = "Qatif, Saudi Arabia"
                             )
                         }
                     }
                 }
-            }
 
-            // Log Out Button
-            Button(
-                onClick = onLogout,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink)
-            ) {
-                Text(
-                    text = "Log Out",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
+                // Account Settings Section
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Account Settings",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = AccentPink)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        ) {
+                            SettingRow(
+                                icon = Icons.Outlined.Lock,
+                                title = "Change Password",
+                                onClick = onNavigateToChangePassword
+                            )
+                            HorizontalDivider(
+                                color = CardWhite.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                            SettingRow(
+                                icon = Icons.Outlined.Description,
+                                title = "Privacy & Security",
+                                onClick = {}
+                            )
+                            HorizontalDivider(
+                                color = CardWhite.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+
+                            // Notifications row with working Switch
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(AccentPink.copy(alpha = 0.6f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Notifications,
+                                            contentDescription = null,
+                                            tint = TextPrimary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Notifications",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextPrimary
+                                    )
+                                }
+
+                                Switch(
+                                    checked = notificationsEnabled,
+                                    onCheckedChange = { notificationsEnabled = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = PrimaryPink,
+                                        uncheckedThumbColor = Color.White,
+                                        uncheckedTrackColor = Color.Gray.copy(alpha = 0.4f)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Log Out Button
+                Button(
+                    onClick = onLogout,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink)
+                ) {
+                    Text(
+                        text = "Log Out",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }
@@ -482,7 +503,5 @@ private fun SettingRow(
 @Preview(showBackground = true)
 @Composable
 fun ProfileScreenPreview() {
-    PrideTheme {
-        ProfileScreen()
-    }
+    ProfileScreen()
 }

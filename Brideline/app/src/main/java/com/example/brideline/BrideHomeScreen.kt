@@ -1,4 +1,4 @@
-package com.example.brideline
+package com.example.pride.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -28,8 +28,10 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,13 +51,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pride.ui.components.BridelineBottomNavBar
 import com.example.pride.ui.components.NavTab
-import com.example.pride.ui.theme.AccentPink
-import com.example.pride.ui.theme.BackgroundSoft
-import com.example.pride.ui.theme.CardWhite
-import com.example.pride.ui.theme.PrideTheme
-import com.example.pride.ui.theme.PrimaryPink
-import com.example.pride.ui.theme.TextPrimary
-import com.example.pride.ui.theme.TextSecondary
+
+// Self-contained Style Guide Colors
+private val PrimaryPink = Color(0xFFD2647D)
+private val AccentPink = Color(0xFFEDBEC8)
+private val BackgroundSoft = Color(0xFFFAF6F7)
+private val CardWhite = Color(0xFFFFFFFF)
+private val TextPrimary = Color(0xFF1F1F1F)
+private val TextSecondary = Color(0xFF555555)
+
+@Composable
+fun BrideHomeTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = PrimaryPink,
+            secondary = AccentPink,
+            background = BackgroundSoft,
+            surface = CardWhite,
+            onPrimary = Color.White,
+            onBackground = TextPrimary,
+            onSurface = TextPrimary
+        ),
+        content = content
+    )
+}
 
 @Composable
 fun MakeupArtistsCanvasIcon(modifier: Modifier = Modifier) {
@@ -165,7 +184,7 @@ fun HairStylistsCanvasIcon(modifier: Modifier = Modifier) {
             )
             cubicTo(
                 w * 0.78f, h * 0.80f,
-                w * 0.72f, h * 0.86f,
+                w * 0.70f, h * 0.86f,
                 w * 0.76f, h * 0.88f
             )
         }
@@ -216,254 +235,256 @@ fun BrideHomeScreen(
     onNavigateToAppointmentDetails: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {}
 ) {
-    Scaffold(
-        containerColor = BackgroundSoft,
-        bottomBar = {
-            BridelineBottomNavBar(
-                selectedTab = NavTab.HOME,
-                onNavigateToHome = {},
-                onNavigateToServices = onNavigateToServices,
-                onNavigateToProfile = onNavigateToProfile
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Top Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    Text(
-                        text = "Bride Line . Bride",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = PrimaryPink
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Plan your wedding",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Welcome back, Zainab",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = PrimaryPink
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.Outlined.MoreHoriz,
-                    contentDescription = "Options",
-                    tint = TextPrimary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(24.dp)
+    BrideHomeTheme {
+        Scaffold(
+            containerColor = BackgroundSoft,
+            bottomBar = {
+                BridelineBottomNavBar(
+                    selectedTab = NavTab.HOME,
+                    onNavigateToHome = {},
+                    onNavigateToServices = onNavigateToServices,
+                    onNavigateToProfile = onNavigateToProfile
                 )
             }
-
-            // Hero Countdown Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = PrimaryPink)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-                    Text(
-                        text = "Your wedding day",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "11 Mar 2027",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "158 days left",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-                }
-            }
-
-            // Quick Access Section
+        ) { innerPadding ->
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Text(
-                    text = "Quick Access",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    QuickAccessCard(
-                        title = "Services",
-                        icon = Icons.AutoMirrored.Outlined.Assignment,
-                        onClick = onNavigateToServices,
-                        modifier = Modifier.weight(1f)
-                    )
-                    QuickAccessCard(
-                        title = "Bookings",
-                        icon = Icons.Outlined.CalendarMonth,
-                        onClick = onNavigateToBookings,
-                        modifier = Modifier.weight(1f)
-                    )
-                    QuickAccessCard(
-                        title = "Invoices",
-                        icon = Icons.AutoMirrored.Outlined.ReceiptLong,
-                        onClick = onNavigateToInvoices,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            // Popular Categories Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+                // Top Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Text(
-                        text = "Popular Categories",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "See all",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryPink,
-                        modifier = Modifier.clickable { onNavigateToServices() }
+                    Column {
+                        Text(
+                            text = "Bride Line . Bride",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PrimaryPink
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Plan your wedding",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Welcome back, Zainab",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PrimaryPink
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.Outlined.MoreHoriz,
+                        contentDescription = "Options",
+                        tint = TextPrimary.copy(alpha = 0.6f),
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    CategoryCard(
-                        title = "Makeup Artists",
-                        icon = { MakeupArtistsCanvasIcon() },
-                        onClick = { onNavigateToCategory("browse_makeup") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    CategoryCard(
-                        title = "Hair Stylists",
-                        icon = { HairStylistsCanvasIcon() },
-                        onClick = { onNavigateToCategory("browse_hair") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            // Upcoming Appointments Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Upcoming Appointments",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "See all",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryPink,
-                        modifier = Modifier.clickable { onNavigateToBookings() }
-                    )
-                }
-
+                // Hero Countdown Card
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToAppointmentDetails() },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = AccentPink)
+                    colors = CardDefaults.cardColors(containerColor = PrimaryPink)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Your wedding day",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "11 Mar 2027",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "158 days left",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
+                }
+
+                // Quick Access Section
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Quick Access",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        QuickAccessCard(
+                            title = "Services",
+                            icon = Icons.AutoMirrored.Outlined.Assignment,
+                            onClick = onNavigateToServices,
+                            modifier = Modifier.weight(1f)
+                        )
+                        QuickAccessCard(
+                            title = "Bookings",
+                            icon = Icons.Outlined.CalendarMonth,
+                            onClick = onNavigateToBookings,
+                            modifier = Modifier.weight(1f)
+                        )
+                        QuickAccessCard(
+                            title = "Invoices",
+                            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+                            onClick = onNavigateToInvoices,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                // Popular Categories Section
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(CardWhite.copy(alpha = 0.6f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Person,
-                                contentDescription = null,
-                                tint = TextPrimary,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(14.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Zahra Alsaffar",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Hair stylist - Zahra",
-                                fontSize = 13.sp,
-                                color = TextSecondary
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "11 Mar 2027 - 10:00 AM",
-                                fontSize = 12.sp,
-                                color = TextSecondary
-                            )
-                        }
-
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "View appointment details",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(24.dp)
+                        Text(
+                            text = "Popular Categories",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
                         )
+                        Text(
+                            text = "See all",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryPink,
+                            modifier = Modifier.clickable { onNavigateToServices() }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CategoryCard(
+                            title = "Makeup Artists",
+                            icon = { MakeupArtistsCanvasIcon() },
+                            onClick = { onNavigateToCategory("browse_makeup") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        CategoryCard(
+                            title = "Hair Stylists",
+                            icon = { HairStylistsCanvasIcon() },
+                            onClick = { onNavigateToCategory("browse_hair") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                // Upcoming Appointments Section
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Upcoming Appointments",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "See all",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryPink,
+                            modifier = Modifier.clickable { onNavigateToBookings() }
+                        )
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToAppointmentDetails() },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = AccentPink)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(CardWhite.copy(alpha = 0.6f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = null,
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Zahra Alsaffar",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Hair stylist - Zahra",
+                                    fontSize = 13.sp,
+                                    color = TextSecondary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "11 Mar 2027 - 10:00 AM",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            }
+
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = "View appointment details",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -540,7 +561,5 @@ private fun CategoryCard(
 @Preview(showBackground = true)
 @Composable
 fun BrideHomeScreenPreview() {
-    PrideTheme {
-        BrideHomeScreen()
-    }
+    BrideHomeScreen()
 }
