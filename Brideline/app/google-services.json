@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "398436078639",
+    "project_id": "brideline-514fe",
+    "storage_bucket": "brideline-514fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:398436078639:android:ce6998102ed5f2e28022da",
+        "android_client_info": {
+          "package_name": "com.example.brideline"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDhYzkF4Zzf5UdkRE8bTTDmlqcL3ve2qY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
