@@ -1,14 +1,21 @@
 package com.example.brideline.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,12 +34,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -49,13 +59,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.brideline.R
 import com.example.brideline.ui.theme.BridelineTheme
+import java.text.ParsePosition
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // --------------------------------------------------
-// Colors
+// Colors and font
 // --------------------------------------------------
 
 private val SignupPrimary = Color(0xFFD2647D)
@@ -64,20 +79,12 @@ private val SignupBackground = Color(0xFFEDEEF3)
 private val SignupTextColor = Color(0xFF514247)
 private val SignupErrorBackground = Color(0xFFF8E2E7)
 
-// --------------------------------------------------
-// Font
-// --------------------------------------------------
-
 private val SignupFont = FontFamily(
     Font(
         resId = R.font.archivo_semibold,
         weight = FontWeight.SemiBold
     )
 )
-
-// --------------------------------------------------
-// Service categories
-// --------------------------------------------------
 
 private val SignupServiceCategories = listOf(
     "Hair Stylists",
@@ -89,7 +96,7 @@ private val SignupServiceCategories = listOf(
 )
 
 // --------------------------------------------------
-// Roles
+// Roles and state
 // --------------------------------------------------
 
 enum class SignupRole(val label: String) {
@@ -97,10 +104,6 @@ enum class SignupRole(val label: String) {
     GROOM("Groom"),
     SERVICE_PROVIDER("Service provider")
 }
-
-// --------------------------------------------------
-// Form state
-// --------------------------------------------------
 
 data class CreateAccountUiState(
     val fullName: String = "",
@@ -130,6 +133,160 @@ data class CreateAccountUiState(
 )
 
 // --------------------------------------------------
+// Input rules
+// --------------------------------------------------
+
+private enum class SignupInputRule {
+    ANY,
+    LETTERS,
+    ALPHANUMERIC,
+    INTEGER,
+    EMAIL
+}
+
+private fun isSignupLetter(character: Char): Boolean {
+    val type = Character.getType(character)
+
+    return character.isLetter() ||
+            type == Character.NON_SPACING_MARK.toInt() ||
+            type == Character.COMBINING_SPACING_MARK.toInt()
+}
+
+private fun isSignupInputAllowed(
+    value: String,
+    rule: SignupInputRule
+): Boolean {
+    return when (rule) {
+        SignupInputRule.ANY -> true
+
+        SignupInputRule.LETTERS -> value.all {
+            isSignupLetter(it) || it == ' '
+        }
+
+        SignupInputRule.ALPHANUMERIC -> value.all {
+            isSignupLetter(it) || it.isDigit()
+        }
+
+        SignupInputRule.INTEGER -> value.all {
+            it in '0'..'9'
+        }
+
+        SignupInputRule.EMAIL -> value.all {
+            it.isLetterOrDigit() || it in "@._%+-"
+        }
+    }
+}
+
+private fun normalizeSignupDigits(value: String): String {
+    return buildString {
+        value.forEach { character ->
+            if (character.isDigit()) {
+                append(
+                    ('0'.code + character.digitToInt()).toChar()
+                )
+            } else {
+                append(character)
+            }
+        }
+    }
+}
+
+// --------------------------------------------------
+// Date helpers
+// --------------------------------------------------
+
+private fun signupUtcDate(
+    year: Int,
+    month: Int,
+    day: Int
+): Long {
+    return Calendar.getInstance(
+        TimeZone.getTimeZone("UTC"),
+        Locale.ENGLISH
+    ).apply {
+        clear()
+        set(year, month, day, 0, 0, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+}
+
+/**
+- Gets today's local calendar date, represented as a UTC midnight
+- timestamp because Material 3 date pickers use UTC dates.
+ */
+private fun signupTodayUtcDate(): Long {
+    val localToday = Calendar.getInstance(Locale.ENGLISH)
+
+    return signupUtcDate(
+        year = localToday.get(Calendar.YEAR),
+        month = localToday.get(Calendar.MONTH),
+        day = localToday.get(Calendar.DAY_OF_MONTH)
+    )
+}
+
+private fun signupParseDate(value: String): Long? {
+    if (value.isBlank()) return null
+
+    val formatter = SimpleDateFormat(
+        "dd/MM/yyyy",
+        Locale.ENGLISH
+    ).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+        isLenient = false
+    }
+
+    val position = ParsePosition(0)
+    val parsed = formatter.parse(value, position) ?: return null
+
+    return parsed.time.takeIf {
+        position.index == value.length
+    }
+}
+
+private fun signupIsPastDate(
+    value: String,
+    todayUtc: Long = signupTodayUtcDate()
+): Boolean {
+    return signupParseDate(value)?.let {
+        it < todayUtc
+    } == true
+}
+
+/**
+- Refreshes the current day at the device's next local midnight.
+ */
+@Composable
+private fun rememberSignupTodayUtc(): Long {
+    var today by remember {
+        mutableStateOf(signupTodayUtcDate())
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            today = signupTodayUtcDate()
+
+            val now = System.currentTimeMillis()
+
+            val nextMidnight =
+                Calendar.getInstance(Locale.ENGLISH).apply {
+                    timeInMillis = now
+                    add(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+
+            delay(
+                (nextMidnight - now).coerceAtLeast(1_000L)
+            )
+        }
+    }
+
+    return today
+}
+
+// --------------------------------------------------
 // Main screen
 // --------------------------------------------------
 
@@ -143,7 +300,7 @@ fun CreateAccountScreen(
     onLoginClick: () -> Unit,
     modifier: Modifier = Modifier,
 
-    // Retained for compatibility with previous AuthFlow calls.
+    // Retained for compatibility with existing AuthFlow calls.
     onCreateGroupClick: () -> Unit = {},
     onJoinGroupClick: () -> Unit = {},
 
@@ -153,8 +310,29 @@ fun CreateAccountScreen(
 ) {
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
+    val todayUtc = rememberSignupTodayUtc()
 
-    // Android system back button.
+    val hasPastWeddingDate =
+        state.role == SignupRole.BRIDE &&
+                signupIsPastDate(
+                    value = state.weddingDate,
+                    todayUtc = todayUtc
+                )
+
+    val passwordsMatch =
+        state.password.isNotEmpty() &&
+                state.password == state.confirmPassword
+
+    val confirmationError =
+        if (
+            state.confirmPassword.isNotEmpty() &&
+            !passwordsMatch
+        ) {
+            "Passwords do not match."
+        } else {
+            null
+        }
+
     BackHandler(onBack = onBack)
 
     Surface(
@@ -216,7 +394,8 @@ fun CreateAccountScreen(
                                 ) {
                                     SignupText(
                                         text = errorMessage,
-                                        modifier = Modifier.padding(16.dp)
+                                        modifier =
+                                            Modifier.padding(16.dp)
                                     )
                                 }
                             }
@@ -234,7 +413,9 @@ fun CreateAccountScreen(
                                         )
                                     )
                                 },
-                                enabled = !isLoading
+                                enabled = !isLoading,
+                                confirmationError =
+                                    confirmationError
                             )
 
                             if (state.showRoleDetails) {
@@ -252,7 +433,8 @@ fun CreateAccountScreen(
                                                     state = state,
                                                     onStateChange =
                                                         onStateChange,
-                                                    enabled = !isLoading
+                                                    enabled =
+                                                        !isLoading
                                                 )
                                             }
 
@@ -261,7 +443,8 @@ fun CreateAccountScreen(
                                                     state = state,
                                                     onStateChange =
                                                         onStateChange,
-                                                    enabled = !isLoading
+                                                    enabled =
+                                                        !isLoading
                                                 )
                                             }
 
@@ -272,7 +455,8 @@ fun CreateAccountScreen(
                                                         onStateChange,
                                                     serviceCategories =
                                                         serviceCategories,
-                                                    enabled = !isLoading
+                                                    enabled =
+                                                        !isLoading
                                                 )
                                             }
                                         }
@@ -291,25 +475,48 @@ fun CreateAccountScreen(
                             Button(
                                 onClick = {
                                     focusManager.clearFocus()
-                                    onCreateAccount(state)
+
+                                    // Recheck the actual day at submission.
+                                    val dateAllowed =
+                                        state.role != SignupRole.BRIDE ||
+                                                !signupIsPastDate(
+                                                    state.weddingDate
+                                                )
+
+                                    if (
+                                        passwordsMatch &&
+                                        dateAllowed
+                                    ) {
+                                        onCreateAccount(state)
+                                    }
                                 },
                                 enabled =
-                                    state.showRoleDetails && !isLoading,
+                                    state.showRoleDetails &&
+                                            !isLoading &&
+                                            passwordsMatch &&
+                                            !hasPastWeddingDate,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(52.dp),
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = SignupPrimary,
-                                    contentColor = Color.White,
-                                    disabledContainerColor =
-                                        SignupPrimary.copy(alpha = 0.6f),
-                                    disabledContentColor = Color.White
-                                )
+                                colors =
+                                    ButtonDefaults.buttonColors(
+                                        containerColor =
+                                            SignupPrimary,
+                                        contentColor =
+                                            Color.White,
+                                        disabledContainerColor =
+                                            SignupPrimary.copy(
+                                                alpha = 0.6f
+                                            ),
+                                        disabledContentColor =
+                                            Color.White
+                                    )
                             ) {
                                 if (isLoading) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
+                                        modifier =
+                                            Modifier.size(24.dp),
                                         color = Color.White,
                                         strokeWidth = 2.dp
                                     )
@@ -333,12 +540,10 @@ fun CreateAccountScreen(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(
-                                    end = 6.dp,
+                                    end = 2.dp,
                                     top = 24.dp,
                                     bottom = 24.dp
                                 )
-                                .width(4.dp)
-                                .fillMaxHeight()
                         )
                     }
                 }
@@ -348,7 +553,7 @@ fun CreateAccountScreen(
 }
 
 // --------------------------------------------------
-// Vertical scrollbar
+// Scrollbar
 // --------------------------------------------------
 
 @Composable
@@ -356,69 +561,125 @@ private fun SignupVerticalScrollbar(
     scrollState: ScrollState,
     modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
+
+    val maximumScroll = scrollState.maxValue
+    val viewport = scrollState.viewportSize.toFloat()
+
+    if (
+        maximumScroll <= 0 ||
+        maximumScroll == Int.MAX_VALUE ||
+        viewport <= 0f
+    ) {
+        return
+    }
+
+    val rawFraction =
+        (scrollState.value.toFloat() / maximumScroll)
+            .coerceIn(0f, 1f)
+
+    val animatedFraction by animateFloatAsState(
+        targetValue = rawFraction,
+        animationSpec = tween(
+            durationMillis = 80,
+            easing = FastOutSlowInEasing
+        ),
+        label = "Scrollbar thumb fraction"
+    )
+
+    var trackHeightPx by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    val density = LocalDensity.current
+    val minimumThumbPx = remember(density) {
+        with(density) { 44.dp.toPx() }
+    }
+    val visualWidthPx = remember(density) {
+        with(density) { 8.dp.toPx() }
+    }
+
+    fun scrollToTrackY(trackY: Float) {
+        if (trackHeightPx <= 0f) return
+
+        val contentHeight = viewport + maximumScroll.toFloat()
+        val thumbHeight =
+            (trackHeightPx * viewport / contentHeight)
+                .coerceIn(minimumThumbPx, trackHeightPx)
+
+        val travelRange = (trackHeightPx - thumbHeight).coerceAtLeast(1f)
+        val targetFraction =
+            ((trackY - thumbHeight / 2f) / travelRange)
+                .coerceIn(0f, 1f)
+
+        val targetScroll = (targetFraction * maximumScroll).roundToInt()
+
+        coroutineScope.launch {
+            scrollState.scrollTo(targetScroll)
+        }
+    }
+
     Canvas(
         modifier = modifier
+            .width(24.dp)
+            .fillMaxHeight()
+            .onSizeChanged { size ->
+                trackHeightPx = size.height.toFloat()
+            }
+            .pointerInput(maximumScroll, viewport, trackHeightPx) {
+                detectTapGestures { offset ->
+                    scrollToTrackY(offset.y)
+                }
+            }
+            .pointerInput(maximumScroll, viewport, trackHeightPx) {
+                detectVerticalDragGestures { change, _ ->
+                    change.consume()
+                    scrollToTrackY(change.position.y)
+                }
+            }
     ) {
-        val maximumScroll = scrollState.maxValue
-        val viewport = scrollState.viewportSize.toFloat()
-
-        if (
-            maximumScroll <= 0 ||
-            maximumScroll == Int.MAX_VALUE ||
-            viewport <= 0f ||
-            size.height <= 0f
-        ) {
-            return@Canvas
-        }
+        if (size.height <= 0f) return@Canvas
 
         val contentHeight =
             viewport + maximumScroll.toFloat()
 
         val minimumThumb =
-            36.dp.toPx().coerceAtMost(size.height)
+            minimumThumbPx.coerceAtMost(size.height)
 
         val thumbHeight =
             (size.height * viewport / contentHeight)
-                .coerceIn(
-                    minimumValue = minimumThumb,
-                    maximumValue = size.height
-                )
+                .coerceIn(minimumThumb, size.height)
 
-        val scrollFraction =
-            (scrollState.value.toFloat() / maximumScroll)
-                .coerceIn(0f, 1f)
+        val barWidth = visualWidthPx.coerceAtMost(size.width)
+        val barLeft = (size.width - barWidth) / 2f
 
         val thumbTop =
-            (size.height - thumbHeight) * scrollFraction
+            (size.height - thumbHeight) * animatedFraction
 
         drawRoundRect(
-            color = SignupPrimary.copy(alpha = 0.12f),
+            color = SignupPrimary.copy(alpha = 0.14f),
+            topLeft = Offset(barLeft, 0f),
+            size = Size(barWidth, size.height),
             cornerRadius = CornerRadius(
-                x = size.width / 2f,
-                y = size.width / 2f
+                barWidth / 2f,
+                barWidth / 2f
             )
         )
 
         drawRoundRect(
-            color = SignupPrimary.copy(alpha = 0.8f),
-            topLeft = Offset(
-                x = 0f,
-                y = thumbTop
-            ),
-            size = Size(
-                width = size.width,
-                height = thumbHeight
-            ),
+            color = SignupPrimary.copy(alpha = 0.85f),
+            topLeft = Offset(barLeft, thumbTop),
+            size = Size(barWidth, thumbHeight),
             cornerRadius = CornerRadius(
-                x = size.width / 2f,
-                y = size.width / 2f
+                barWidth / 2f,
+                barWidth / 2f
             )
         )
     }
 }
 
 // --------------------------------------------------
-// Header without a back button
+// Header
 // --------------------------------------------------
 
 @Composable
@@ -449,79 +710,6 @@ private fun SignupHeader() {
 }
 
 // --------------------------------------------------
-// Input rules
-// --------------------------------------------------
-
-private enum class SignupInputRule {
-    ANY,
-    LETTERS,
-    ALPHANUMERIC,
-    INTEGER,
-    EMAIL
-}
-
-private fun isSignupLetter(
-    character: Char
-): Boolean {
-    val type = Character.getType(character)
-
-    return character.isLetter() ||
-            type == Character.NON_SPACING_MARK.toInt() ||
-            type == Character.COMBINING_SPACING_MARK.toInt()
-}
-
-private fun isSignupInputAllowed(
-    value: String,
-    rule: SignupInputRule
-): Boolean {
-    return when (rule) {
-        SignupInputRule.ANY -> {
-            true
-        }
-
-        SignupInputRule.LETTERS -> {
-            value.all {
-                isSignupLetter(it) || it == ' '
-            }
-        }
-
-        SignupInputRule.ALPHANUMERIC -> {
-            value.all {
-                isSignupLetter(it) || it.isDigit()
-            }
-        }
-
-        SignupInputRule.INTEGER -> {
-            value.all {
-                it in '0'..'9'
-            }
-        }
-
-        SignupInputRule.EMAIL -> {
-            value.all {
-                it.isLetterOrDigit() || it in "@._%+-"
-            }
-        }
-    }
-}
-
-private fun normalizeSignupDigits(
-    value: String
-): String {
-    return buildString {
-        value.forEach { character ->
-            if (character.isDigit()) {
-                append(
-                    ('0'.code + character.digitToInt()).toChar()
-                )
-            } else {
-                append(character)
-            }
-        }
-    }
-}
-
-// --------------------------------------------------
 // Common account fields
 // --------------------------------------------------
 
@@ -530,7 +718,8 @@ private fun AccountDetailsFields(
     state: CreateAccountUiState,
     onStateChange: (CreateAccountUiState) -> Unit,
     onRoleSelected: (SignupRole) -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
+    confirmationError: String? = null
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -540,9 +729,7 @@ private fun AccountDetailsFields(
             placeholder = "Enter your full name",
             value = state.fullName,
             onValueChange = {
-                onStateChange(
-                    state.copy(fullName = it)
-                )
+                onStateChange(state.copy(fullName = it))
             },
             inputRule = SignupInputRule.LETTERS,
             enabled = enabled
@@ -553,9 +740,7 @@ private fun AccountDetailsFields(
             placeholder = "Enter your email address",
             value = state.email,
             onValueChange = {
-                onStateChange(
-                    state.copy(email = it)
-                )
+                onStateChange(state.copy(email = it))
             },
             keyboardType = KeyboardType.Email,
             inputRule = SignupInputRule.EMAIL,
@@ -567,9 +752,7 @@ private fun AccountDetailsFields(
             placeholder = "Create password",
             value = state.password,
             onValueChange = {
-                onStateChange(
-                    state.copy(password = it)
-                )
+                onStateChange(state.copy(password = it))
             },
             isPassword = true,
             keyboardType = KeyboardType.NumberPassword,
@@ -590,7 +773,8 @@ private fun AccountDetailsFields(
             keyboardType = KeyboardType.Password,
             inputRule = SignupInputRule.ALPHANUMERIC,
             imeAction = ImeAction.Done,
-            enabled = enabled
+            enabled = enabled,
+            error = confirmationError
         )
 
         SignupDropdown(
@@ -606,11 +790,11 @@ private fun AccountDetailsFields(
             },
             enabled = enabled,
             onSelected = { selectedLabel ->
-                val selectedRole = SignupRole.values().first {
-                    it.label == selectedLabel
-                }
-
-                onRoleSelected(selectedRole)
+                onRoleSelected(
+                    SignupRole.values().first {
+                        it.label == selectedLabel
+                    }
+                )
             }
         )
     }
@@ -631,9 +815,7 @@ private fun BrideDetailsFields(
         placeholder = "Enter your wedding date",
         value = state.weddingDate,
         onValueChange = {
-            onStateChange(
-                state.copy(weddingDate = it)
-            )
+            onStateChange(state.copy(weddingDate = it))
         },
         enabled = enabled
     )
@@ -643,9 +825,7 @@ private fun BrideDetailsFields(
         placeholder = "Enter your partner’s name",
         value = state.partnerName,
         onValueChange = {
-            onStateChange(
-                state.copy(partnerName = it)
-            )
+            onStateChange(state.copy(partnerName = it))
         },
         inputRule = SignupInputRule.LETTERS,
         enabled = enabled
@@ -695,9 +875,7 @@ private fun GroomDetailsFields(
         placeholder = "Enter your wedding code",
         value = state.weddingCode,
         onValueChange = {
-            onStateChange(
-                state.copy(weddingCode = it)
-            )
+            onStateChange(state.copy(weddingCode = it))
         },
         inputRule = SignupInputRule.ALPHANUMERIC,
         enabled = enabled
@@ -708,9 +886,7 @@ private fun GroomDetailsFields(
         placeholder = "Enter your budget in SAR",
         value = state.budget,
         onValueChange = {
-            onStateChange(
-                state.copy(budget = it)
-            )
+            onStateChange(state.copy(budget = it))
         },
         keyboardType = KeyboardType.Number,
         inputRule = SignupInputRule.INTEGER,
@@ -828,7 +1004,8 @@ private fun SignupField(
     keyboardType: KeyboardType = KeyboardType.Text,
     inputRule: SignupInputRule = SignupInputRule.ANY,
     imeAction: ImeAction = ImeAction.Next,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    error: String? = null
 ) {
     var passwordVisible by rememberSaveable(label) {
         mutableStateOf(false)
@@ -844,16 +1021,17 @@ private fun SignupField(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SignupText(
-            text = label
-        )
+        SignupText(label)
 
         TextField(
             value = value,
 
             onValueChange = { proposedValue ->
                 val candidate =
-                    if (inputRule == SignupInputRule.INTEGER) {
+                    if (
+                        inputRule == SignupInputRule.INTEGER ||
+                        isPassword
+                    ) {
                         normalizeSignupDigits(proposedValue)
                     } else {
                         proposedValue
@@ -876,8 +1054,21 @@ private fun SignupField(
                 },
 
             enabled = enabled,
+            isError = error != null,
             singleLine = true,
             shape = RoundedCornerShape(8.dp),
+
+            supportingText = if (error != null) {
+                {
+                    SignupText(
+                        text = error,
+                        color = SignupPrimary,
+                        fontSize = 12.sp
+                    )
+                }
+            } else {
+                null
+            },
 
             textStyle = TextStyle(
                 fontFamily = SignupFont,
@@ -953,6 +1144,10 @@ private fun SignupField(
                 focusedTextColor = SignupTextColor,
                 unfocusedTextColor = SignupTextColor,
                 disabledTextColor = SignupTextColor,
+                errorContainerColor = SignupAccent,
+                errorTextColor = SignupTextColor,
+                errorIndicatorColor = SignupPrimary,
+                errorCursorColor = SignupPrimary,
                 cursorColor = SignupPrimary
             )
         )
@@ -977,6 +1172,7 @@ private fun SignupDateField(
     }
 
     val focusManager = LocalFocusManager.current
+    val todayUtc = rememberSignupTodayUtc()
 
     val formatter = remember {
         SimpleDateFormat(
@@ -992,9 +1188,7 @@ private fun SignupDateField(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SignupText(
-            text = label
-        )
+        SignupText(label)
 
         Surface(
             onClick = {
@@ -1028,11 +1222,7 @@ private fun SignupDateField(
                     text = if (value.isNotBlank()) {
                         value
                     } else {
-                        if (showPicker) {
-                            ""
-                        } else {
-                            placeholder
-                        }
+                        if (showPicker) "" else placeholder
                     },
                     color = if (value.isBlank()) {
                         Color.White
@@ -1044,18 +1234,58 @@ private fun SignupDateField(
         }
     }
 
+    if (signupIsPastDate(value, todayUtc)) {
+        SignupText(
+            text = "Choose today or a future date.",
+            color = SignupPrimary,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+
     if (showPicker) {
-        val initialDate = remember(value) {
-            runCatching {
-                formatter.parse(value)?.time
-            }.getOrNull()
+        val initialDate = remember(value, todayUtc) {
+            signupParseDate(value)?.takeIf {
+                it >= todayUtc
+            }
+        }
+
+        val selectableDates = remember {
+            object : SelectableDates {
+
+                override fun isSelectableDate(
+                    utcTimeMillis: Long
+                ): Boolean {
+                    return utcTimeMillis >=
+                            signupTodayUtcDate()
+                }
+
+                override fun isSelectableYear(
+                    year: Int
+                ): Boolean {
+                    return year >= Calendar
+                        .getInstance(Locale.ENGLISH)
+                        .get(Calendar.YEAR)
+                }
+            }
         }
 
         val pickerState = rememberDatePickerState(
-            initialSelectedDateMillis = initialDate
+            initialSelectedDateMillis = initialDate,
+            selectableDates = selectableDates
         )
 
         DatePickerDialog(
+            modifier = Modifier.border(
+                width = 1.dp,
+                color = Color(0xFFF2E4E9),
+                shape = RoundedCornerShape(24.dp)
+            ),
+            shape = RoundedCornerShape(24.dp),
+            colors = DatePickerDefaults.colors(
+                containerColor = Color.White
+            ),
+
             onDismissRequest = {
                 showPicker = false
             },
@@ -1063,14 +1293,19 @@ private fun SignupDateField(
             confirmButton = {
                 TextButton(
                     enabled =
-                        pickerState.selectedDateMillis != null,
+                        pickerState.selectedDateMillis?.let {
+                            it >= todayUtc
+                        } == true,
                     onClick = {
                         pickerState.selectedDateMillis?.let {
-                            onValueChange(
-                                formatter.format(Date(it))
-                            )
+                            // Recheck the actual day when confirming.
+                            if (it >= signupTodayUtcDate()) {
+                                onValueChange(
+                                    formatter.format(Date(it))
+                                )
 
-                            showPicker = false
+                                showPicker = false
+                            }
                         }
                     }
                 ) {
@@ -1094,22 +1329,359 @@ private fun SignupDateField(
                 }
             }
         ) {
-            DatePicker(
+            SignupStyledCalendar(
                 state = pickerState,
-                showModeToggle = false,
-                colors = DatePickerDefaults.colors(
-                    containerColor = SignupBackground,
-                    selectedDayContainerColor = SignupPrimary,
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = SignupPrimary
-                )
+                today = todayUtc
             )
         }
     }
 }
 
 // --------------------------------------------------
-// Shared dropdown
+// Styled calendar
+// --------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SignupStyledCalendar(
+    state: DatePickerState,
+    today: Long
+) {
+    val displayed = state.displayedMonthMillis
+
+    val monthCalendar = remember(displayed) {
+        Calendar.getInstance(
+            TimeZone.getTimeZone("UTC"),
+            Locale.ENGLISH
+        ).apply {
+            timeInMillis = displayed
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+    }
+
+    val year = monthCalendar.get(Calendar.YEAR)
+    val month = monthCalendar.get(Calendar.MONTH)
+
+    val daysInMonth =
+        monthCalendar.getActualMaximum(
+            Calendar.DAY_OF_MONTH
+        )
+
+    val firstDayOffset =
+        (monthCalendar.get(Calendar.DAY_OF_WEEK) + 5) % 7
+
+    val rows =
+        (firstDayOffset + daysInMonth + 6) / 7
+
+    val monthLabel = remember(displayed) {
+        SimpleDateFormat(
+            "MMMM yyyy",
+            Locale.ENGLISH
+        ).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date(displayed))
+    }
+
+    var showYears by remember {
+        mutableStateOf(false)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = 12.dp,
+                vertical = 8.dp
+            )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+            IconButton(
+                enabled =
+                    year > state.yearRange.first ||
+                            month > Calendar.JANUARY,
+                onClick = {
+                    val previous =
+                        monthCalendar.clone() as Calendar
+
+                    previous.add(Calendar.MONTH, -1)
+
+                    state.displayedMonthMillis =
+                        previous.timeInMillis
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = "Previous month"
+                }
+            ) {
+                SignupText(
+                    text = "‹",
+                    fontSize = 26.sp,
+                    color = SignupPrimary
+                )
+            }
+
+            Box(
+                modifier = Modifier.weight(1f)
+            ) {
+                TextButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        showYears = true
+                    }
+                ) {
+                    SignupText(
+                        text = monthLabel,
+                        fontSize = 16.sp
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showYears,
+                    onDismissRequest = {
+                        showYears = false
+                    },
+                    modifier = Modifier.heightIn(
+                        max = 280.dp
+                    ),
+                    containerColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    state.yearRange.forEach { candidateYear ->
+                        DropdownMenuItem(
+                            text = {
+                                SignupText(
+                                    text =
+                                        candidateYear.toString(),
+                                    color =
+                                        if (candidateYear == year) {
+                                            SignupPrimary
+                                        } else {
+                                            SignupTextColor
+                                        }
+                                )
+                            },
+
+                            enabled =
+                                state.selectableDates
+                                    .isSelectableYear(
+                                        candidateYear
+                                    ),
+
+                            onClick = {
+                                state.displayedMonthMillis =
+                                    signupUtcDate(
+                                        year = candidateYear,
+                                        month = month,
+                                        day = 1
+                                    )
+
+                                showYears = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            IconButton(
+                enabled =
+                    year < state.yearRange.last ||
+                            month < Calendar.DECEMBER,
+                onClick = {
+                    val next =
+                        monthCalendar.clone() as Calendar
+
+                    next.add(Calendar.MONTH, 1)
+
+                    state.displayedMonthMillis =
+                        next.timeInMillis
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = "Next month"
+                }
+            ) {
+                SignupText(
+                    text = "›",
+                    fontSize = 26.sp,
+                    color = SignupPrimary
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            listOf(
+                "MON",
+                "TUE",
+                "WED",
+                "THU",
+                "FRI",
+                "SAT",
+                "SUN"
+            ).forEach { weekday ->
+                SignupText(
+                    text = weekday,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 8.dp),
+                    fontSize = 11.sp,
+                    color = Color(0xFF8F898D),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        HorizontalDivider(
+            color = Color(0xFFF2E8EC)
+        )
+
+        Spacer(Modifier.height(6.dp))
+
+        repeat(rows) { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                repeat(7) { column ->
+                    val day =
+                        row * 7 + column - firstDayOffset + 1
+
+                    if (day !in 1..daysInMonth) {
+                        Spacer(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                        )
+                    } else {
+                        val dayMillis = signupUtcDate(
+                            year = year,
+                            month = month,
+                            day = day
+                        )
+
+                        val selectable =
+                            state.selectableDates
+                                .isSelectableYear(year) &&
+                                    state.selectableDates
+                                        .isSelectableDate(
+                                            dayMillis
+                                        )
+
+                        SignupCalendarDay(
+                            day = day,
+                            dayMillis = dayMillis,
+                            isSelected =
+                                state.selectedDateMillis ==
+                                        dayMillis &&
+                                        selectable,
+                            isToday = today == dayMillis,
+                            enabled = selectable,
+                            onClick = {
+                                // Recheck the clock at the moment of tapping.
+                                val stillSelectable =
+                                    state.selectableDates
+                                        .isSelectableYear(year) &&
+                                            state.selectableDates
+                                                .isSelectableDate(
+                                                    dayMillis
+                                                )
+
+                                if (stillSelectable) {
+                                    state.selectedDateMillis =
+                                        dayMillis
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --------------------------------------------------
+// Calendar day
+// --------------------------------------------------
+
+@Composable
+private fun SignupCalendarDay(
+    day: Int,
+    dayMillis: Long,
+    isSelected: Boolean,
+    isToday: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // No special weekend colors.
+    val circleColor = when {
+        isSelected -> SignupPrimary
+        !enabled -> Color(0xFFEDEEF3)
+        else -> Color(0xFFF8EDF0)
+    }
+
+    val textColor = when {
+        isSelected -> Color.White
+        !enabled -> Color(0xFFB2B1B9)
+        else -> Color(0xFF8C727A)
+    }
+
+    val description = remember(dayMillis) {
+        SimpleDateFormat(
+            "EEEE, d MMMM yyyy",
+            Locale.ENGLISH
+        ).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date(dayMillis))
+    }
+
+    Box(
+        modifier = modifier
+            .height(44.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick
+            )
+            .semantics {
+                selected = isSelected
+                contentDescription = description
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.size(32.dp),
+            shape = CircleShape,
+            color = circleColor,
+            border = if (isToday && !isSelected) {
+                BorderStroke(
+                    width = 1.dp,
+                    color = SignupPrimary
+                )
+            } else {
+                null
+            }
+        ) {
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                SignupText(
+                    text = day.toString(),
+                    fontSize = 14.sp,
+                    color = textColor,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+// --------------------------------------------------
+// Dropdown
 // --------------------------------------------------
 
 @Composable
@@ -1133,11 +1705,7 @@ private fun SignupDropdown(
     val focusManager = LocalFocusManager.current
 
     val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) {
-            180f
-        } else {
-            0f
-        },
+        targetValue = if (expanded) 180f else 0f,
         label = "Dropdown arrow"
     )
 
@@ -1145,9 +1713,7 @@ private fun SignupDropdown(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SignupText(
-            text = label
-        )
+        SignupText(label)
 
         Box(
             modifier = Modifier.fillMaxWidth()
@@ -1157,7 +1723,8 @@ private fun SignupDropdown(
                     focusManager.clearFocus()
                     expanded = true
                 },
-                enabled = enabled && options.isNotEmpty(),
+                enabled =
+                    enabled && options.isNotEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .onSizeChanged {
@@ -1186,11 +1753,7 @@ private fun SignupDropdown(
                 ) {
                     SignupText(
                         text = selectedValue.ifBlank {
-                            if (expanded) {
-                                ""
-                            } else {
-                                placeholder
-                            }
+                            if (expanded) "" else placeholder
                         },
                         color = Color.White,
                         modifier = Modifier.weight(1f)
@@ -1207,8 +1770,8 @@ private fun SignupDropdown(
                             .rotate(arrowRotation)
                     ) {
                         val middle = Offset(
-                            x = size.width / 2f,
-                            y = size.height
+                            size.width / 2f,
+                            size.height
                         )
 
                         drawLine(
@@ -1222,10 +1785,7 @@ private fun SignupDropdown(
                         drawLine(
                             color = SignupTextColor,
                             start = middle,
-                            end = Offset(
-                                x = size.width,
-                                y = 0f
-                            ),
+                            end = Offset(size.width, 0f),
                             strokeWidth = 1.5.dp.toPx(),
                             cap = StrokeCap.Round
                         )
@@ -1251,11 +1811,13 @@ private fun SignupDropdown(
                 shadowElevation = 8.dp,
                 border = BorderStroke(
                     width = 1.dp,
-                    color = SignupPrimary.copy(alpha = 0.18f)
+                    color =
+                        SignupPrimary.copy(alpha = 0.18f)
                 )
             ) {
                 options.forEach { option ->
-                    val selected = option == selectedValue
+                    val selected =
+                        option == selectedValue
 
                     DropdownMenuItem(
                         modifier = Modifier
@@ -1268,7 +1830,9 @@ private fun SignupDropdown(
                             )
                             .background(
                                 color = if (selected) {
-                                    SignupPrimary.copy(alpha = 0.1f)
+                                    SignupPrimary.copy(
+                                        alpha = 0.1f
+                                    )
                                 } else {
                                     Color.Transparent
                                 }
@@ -1309,7 +1873,7 @@ private fun SignupDropdown(
 }
 
 // --------------------------------------------------
-// Dropdown selected checkmark
+// Dropdown checkmark
 // --------------------------------------------------
 
 @Composable
@@ -1322,15 +1886,15 @@ private fun SignupCheckmark() {
             }
     ) {
         val middle = Offset(
-            x = size.width * 0.4f,
-            y = size.height * 0.75f
+            size.width * 0.4f,
+            size.height * 0.75f
         )
 
         drawLine(
             color = SignupPrimary,
             start = Offset(
-                x = size.width * 0.15f,
-                y = size.height * 0.5f
+                size.width * 0.15f,
+                size.height * 0.5f
             ),
             end = middle,
             strokeWidth = 2.dp.toPx(),
@@ -1341,8 +1905,8 @@ private fun SignupCheckmark() {
             color = SignupPrimary,
             start = middle,
             end = Offset(
-                x = size.width * 0.85f,
-                y = size.height * 0.25f
+                size.width * 0.85f,
+                size.height * 0.25f
             ),
             strokeWidth = 2.dp.toPx(),
             cap = StrokeCap.Round
@@ -1351,7 +1915,7 @@ private fun SignupCheckmark() {
 }
 
 // --------------------------------------------------
-// Login footer
+// Footer and typography
 // --------------------------------------------------
 
 @Composable
@@ -1384,10 +1948,6 @@ private fun SignupLoginFooter(
     }
 }
 
-// --------------------------------------------------
-// Shared typography
-// --------------------------------------------------
-
 @Composable
 private fun SignupText(
     text: String,
@@ -1408,7 +1968,7 @@ private fun SignupText(
 }
 
 // --------------------------------------------------
-// Preview state holder
+// Previews
 // --------------------------------------------------
 
 @Composable
@@ -1432,10 +1992,6 @@ private fun SignupPreviewContent(
         )
     }
 }
-
-// --------------------------------------------------
-// Previews
-// --------------------------------------------------
 
 @Preview(
     name = "Create Account",
