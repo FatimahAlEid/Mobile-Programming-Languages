@@ -1,4 +1,4 @@
-package com.example.pride.ui.screens
+package com.example.brideline
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
